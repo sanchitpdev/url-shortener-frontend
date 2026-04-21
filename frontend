@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ShrinkIt — URL Shortener</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0e13;
+      --bg2: #111620;
+      --bg3: #181e2a;
+      --border: #1f2a3a;
+      --border2: #2a3a50;
+      --teal: #00d4aa;
+      --teal-glow: rgba(0,212,170,0.12);
+      --red: #ff4d4d;
+      --text: #e8edf5;
+      --text2: #8896a8;
+      --text3: #4a5568;
+      --mono: 'JetBrains Mono', monospace;
+      --sans: 'Sora', sans-serif;
+      --r: 10px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(255,255,255,0.012) 2px,rgba(255,255,255,0.012) 4px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    header {
+      position: relative;
+      z-index: 1;
+      padding: 2rem 2rem 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: var(--teal);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .logo-name { font-family: var(--mono); font-size: 1.1rem; font-weight: 600; color: var(--text); letter-spacing: -0.02em; }
+    .logo-name span { color: var(--teal); }
+
+    .live-badge {
+      font-family: var(--mono); font-size: 0.7rem; color: var(--text2);
+      border: 1px solid var(--border2); padding: 4px 10px; border-radius: 20px; letter-spacing: 0.05em;
+    }
+
+    .dot {
+      display: inline-block; width: 6px; height: 6px;
+      background: var(--teal); border-radius: 50%; margin-right: 6px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    @keyframes spin { to{transform:rotate(360deg)} }
+    @keyframes slideIn { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+
+    main {
+      position: relative; z-index: 1; flex: 1;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 4rem 1.5rem 3rem;
+    }
+
+    .tag {
+      font-family: var(--mono); font-size: 0.72rem; color: var(--teal);
+      letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 1.25rem;
+    }
+
+    h1 {
+      font-size: clamp(2rem,5vw,3.2rem); font-weight: 600;
+      text-align: center; line-height: 1.15; letter-spacing: -0.03em;
+      margin-bottom: 1rem; max-width: 600px;
+    }
+
+    h1 em { font-style: normal; color: var(--teal); }
+
+    .sub {
+      color: var(--text2); font-size: 1rem; text-align: center;
+      margin-bottom: 3rem; font-weight: 300; line-height: 1.6;
+    }
+
+    .card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 16px; padding: 2rem; width: 100%; max-width: 640px;
+    }
+
+    .lbl {
+      font-family: var(--mono); font-size: 0.72rem; color: var(--text3);
+      letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px;
+    }
+
+    .iw { position: relative; margin-bottom: 1rem; }
+
+    .url-input {
+      width: 100%; background: var(--bg3); border: 1px solid var(--border2);
+      border-radius: var(--r); color: var(--text); font-family: var(--mono);
+      font-size: 0.9rem; padding: 0.85rem 3rem 0.85rem 1rem;
+      outline: none; transition: border-color 0.2s, box-shadow 0.2s; caret-color: var(--teal);
+    }
+
+    .url-input::placeholder { color: var(--text3); }
+
+    .url-input:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px var(--teal-glow);
+    }
+
+    .ii {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      color: var(--text3); pointer-events: none;
+    }
+
+    .opt-row { display: flex; align-items: flex-end; gap: 1rem; margin-bottom: 1.25rem; }
+    .opt-group { display: flex; flex-direction: column; flex: 1; }
+
+    .expiry-sel {
+      background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--r);
+      color: var(--text2); font-family: var(--mono); font-size: 0.82rem;
+      padding: 0.65rem 0.9rem; outline: none; appearance: none; cursor: pointer; transition: border-color 0.2s;
+    }
+
+    .expiry-sel:focus { border-color: var(--teal); }
+    .expiry-sel option { background: var(--bg2); }
+
+    .btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      background: var(--teal); color: #0a0e13; font-family: var(--sans);
+      font-size: 0.9rem; font-weight: 600; border: none; border-radius: var(--r);
+      padding: 0.75rem 1.75rem; cursor: pointer; transition: background 0.2s,transform 0.12s; white-space: nowrap;
+    }
+
+    .btn:hover { background: #00eec0; }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .spin { width:16px;height:16px;border:2px solid rgba(0,0,0,0.2);border-top-color:#0a0e13;border-radius:50%;animation:spin 0.6s linear infinite;display:none; }
+
+    .result {
+      display: none; margin-top: 1.25rem; background: var(--bg3);
+      border: 1px solid var(--teal); border-radius: var(--r); padding: 1rem 1.1rem;
+      animation: slideIn 0.3s ease;
+    }
+
+    .res-lbl { font-family: var(--mono); font-size: 0.68rem; color: var(--teal); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; }
+    .res-row { display: flex; align-items: center; gap: 10px; }
+
+    .short-url {
+      font-family: var(--mono); font-size: 0.95rem; color: var(--text);
+      flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    .short-url a { color: var(--teal); text-decoration: none; }
+    .short-url a:hover { text-decoration: underline; }
+
+    .copy-btn {
+      flex-shrink: 0; background: transparent; border: 1px solid var(--border2);
+      border-radius: 6px; color: var(--text2); font-family: var(--mono); font-size: 0.75rem;
+      padding: 5px 12px; cursor: pointer; transition: all 0.2s;
+    }
+
+    .copy-btn:hover { border-color: var(--teal); color: var(--teal); }
+    .copy-btn.copied { border-color: var(--teal); color: var(--teal); background: var(--teal-glow); }
+
+    .err {
+      display: none; margin-top: 1rem; padding: 0.75rem 1rem;
+      background: rgba(255,77,77,0.08); border: 1px solid rgba(255,77,77,0.3);
+      border-radius: var(--r); color: var(--red); font-size: 0.82rem;
+      font-family: var(--mono); animation: slideIn 0.2s ease; line-height: 1.5;
+    }
+
+    .stats { display: flex; gap: 1.5rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+    .stat { display: flex; flex-direction: column; gap: 2px; }
+    .sv { font-family: var(--mono); font-size: 1.1rem; font-weight: 600; color: var(--teal); }
+    .sl { font-size: 0.7rem; color: var(--text3); letter-spacing: 0.05em; }
+
+    .hist { width: 100%; max-width: 640px; margin-top: 2.5rem; }
+
+    .hist-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .hist-title { font-family: var(--mono); font-size: 0.72rem; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; }
+    .clr-btn { font-family: var(--mono); font-size: 0.7rem; color: var(--text3); background: transparent; border: none; cursor: pointer; transition: color 0.2s; }
+    .clr-btn:hover { color: var(--red); }
+
+    .hist-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .hi {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r);
+      padding: 0.85rem 1rem; display: flex; align-items: center; gap: 12px;
+      animation: slideIn 0.25s ease; transition: border-color 0.2s;
+    }
+
+    .hi:hover { border-color: var(--border2); }
+
+    .hi-slug {
+      font-family: var(--mono); font-size: 0.8rem; color: var(--teal);
+      background: var(--teal-glow); border: 1px solid rgba(0,212,170,0.2);
+      border-radius: 5px; padding: 3px 8px; flex-shrink: 0;
+    }
+
+    .hi-orig { font-size: 0.82rem; color: var(--text2); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .hi-copy {
+      flex-shrink: 0; background: transparent; border: 1px solid var(--border);
+      border-radius: 5px; color: var(--text3); font-size: 0.7rem; padding: 3px 8px;
+      cursor: pointer; font-family: var(--mono); transition: all 0.2s;
+    }
+
+    .hi-copy:hover { border-color: var(--teal); color: var(--teal); }
+
+    .empty { text-align: center; color: var(--text3); font-family: var(--mono); font-size: 0.82rem; padding: 2rem 0; }
+
+    footer {
+      position: relative; z-index: 1; text-align: center; padding: 1.5rem;
+      font-family: var(--mono); font-size: 0.72rem; color: var(--text3);
+      border-top: 1px solid var(--border);
+    }
+
+    footer a { color: var(--teal); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    @media(max-width:480px) {
+      .opt-row { flex-direction: column; align-items: stretch; }
+      .btn { width: 100%; }
+      header { padding: 1.25rem 1.25rem 0; }
+      main { padding: 2.5rem 1rem 2rem; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="logo" href="#">
+      <div class="logo-icon">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <path d="M13 7H15C16.657 7 18 8.343 18 10C18 11.657 16.657 13 15 13H13M7 13H5C3.343 13 2 11.657 2 10C2 8.343 3.343 7 5 7H7M7 10H13" stroke="#0a0e13" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <span class="logo-name">shrink<span>it</span></span>
+    </a>
+    <div class="live-badge"><span class="dot"></span>API LIVE</div>
+  </header>
+
+  <main>
+    <p class="tag">// powered by Spring Boot + Redis + AWS ECS</p>
+    <h1>Long URLs are <em>ugly</em>.<br>Let's fix that.</h1>
+    <p class="sub">Paste a long link. Get a short one.<br>Backed by Redis cache-aside &amp; PostgreSQL on AWS ECS Fargate.</p>
+
+    <div class="card">
+      <div class="lbl">// paste your url</div>
+      <div class="iw">
+        <input class="url-input" id="urlInput" type="url"
+          placeholder="https://your-very-long-url.com/goes/right/here"
+          autocomplete="off" spellcheck="false" />
+        <span class="ii">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M8.667 6l2-2A2.667 2.667 0 1114.333 7.667l-2 2M7.333 10l-2 2A2.667 2.667 0 111.667 8.333l2-2M5.333 10.667l5.334-5.334" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+        </span>
+      </div>
+
+      <div class="opt-row">
+        <div class="opt-group">
+          <div class="lbl">// expiry</div>
+          <select class="expiry-sel" id="expirySelect">
+            <option value="">No expiry</option>
+            <option value="1">1 day</option>
+            <option value="3">3 days</option>
+            <option value="7">7 days</option>
+            <option value="30">30 days</option>
+          </select>
+        </div>
+        <button class="btn" id="shortenBtn" onclick="shortenUrl()">
+          <span class="spin" id="spinner"></span>
+          <span id="btnText">Shorten →</span>
+        </button>
+      </div>
+
+      <div class="result" id="resultBox">
+        <div class="res-lbl">✓ shortened url ready</div>
+        <div class="res-row">
+          <span class="short-url" id="shortUrlDisplay"></span>
+          <button class="copy-btn" id="mainCopyBtn" onclick="copyMain()">Copy</button>
+        </div>
+      </div>
+
+      <div class="err" id="errMsg"></div>
+
+      <div class="stats">
+        <div class="stat"><span class="sv" id="totalCount">0</span><span class="sl">links shortened</span></div>
+        <div class="stat"><span class="sv">Redis</span><span class="sl">cache-aside</span></div>
+        <div class="stat"><span class="sv">7-char</span><span class="sl">slug length</span></div>
+      </div>
+    </div>
+
+    <div class="hist">
+      <div class="hist-hdr">
+        <span class="hist-title">// recent links</span>
+        <button class="clr-btn" onclick="clearHistory()">clear all</button>
+      </div>
+      <div class="hist-list" id="histList"></div>
+    </div>
+  </main>
+
+  <footer>
+    Built by <a href="https://github.com/sanchitpdev" target="_blank">@sanchitpdev</a> &mdash;
+    Spring Boot 3 &middot; PostgreSQL &middot; Redis &middot; Docker &middot; AWS ECS Fargate &middot;
+    <a href="https://github.com/sanchitpdev/url-shortener" target="_blank">Source ↗</a>
+  </footer>
+
+  <script>
+    const API = 'http://urlshortener-alb-1372942651.ap-south-1.elb.amazonaws.com';
+    let hist = JSON.parse(localStorage.getItem('sh') || '[]');
+    let currentUrl = '';
+
+    renderHist();
+
+    async function shortenUrl() {
+      const inp = document.getElementById('urlInput');
+      const exp = document.getElementById('expirySelect');
+      const btn = document.getElementById('shortenBtn');
+      const sp  = document.getElementById('spinner');
+      const bt  = document.getElementById('btnText');
+      const rb  = document.getElementById('resultBox');
+      let url = inp.value.trim();
+
+      if (!url) { showErr('Please enter a URL.'); return; }
+      if (!url.startsWith('http')) url = 'https://' + url;
+
+      hideErr(); rb.style.display = 'none';
+      btn.disabled = true; sp.style.display = 'block'; bt.textContent = 'Shortening...';
+
+      const body = { originalUrl: url };
+      if (exp.value) body.expiryDays = parseInt(exp.value);
+
+      try {
+        const res = await fetch(`${API}/api/shorten`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+
+        const d = await res.json();
+        currentUrl = d.shortUrl;
+
+        document.getElementById('shortUrlDisplay').innerHTML =
+          `<a href="${d.shortUrl}" target="_blank" rel="noopener">${d.shortUrl}</a>`;
+        const cb = document.getElementById('mainCopyBtn');
+        cb.className = 'copy-btn'; cb.textContent = 'Copy';
+        rb.style.display = 'block';
+
+        addHist({ slug: d.slug, shortUrl: d.shortUrl, originalUrl: d.originalUrl });
+        inp.value = ''; exp.value = '';
+      } catch (e) {
+        const msg = e.message.includes('fetch')
+          ? 'Cannot reach API. Make sure CORS is enabled on the backend and the server is running.'
+          : 'Error: ' + e.message;
+        showErr(msg);
+      } finally {
+        btn.disabled = false; sp.style.display = 'none'; bt.textContent = 'Shorten →';
+      }
+    }
+
+    function copyMain() {
+      const btn = document.getElementById('mainCopyBtn');
+      navigator.clipboard.writeText(currentUrl).then(() => {
+        btn.textContent = '✓ Copied'; btn.className = 'copy-btn copied';
+        setTimeout(() => { btn.textContent = 'Copy'; btn.className = 'copy-btn'; }, 2000);
+      });
+    }
+
+    function addHist(item) {
+      hist.unshift({ ...item, ts: Date.now() });
+      if (hist.length > 20) hist.pop();
+      localStorage.setItem('sh', JSON.stringify(hist));
+      renderHist();
+    }
+
+    function renderHist() {
+      const list = document.getElementById('histList');
+      document.getElementById('totalCount').textContent = hist.length;
+      if (!hist.length) {
+        list.innerHTML = '<div class="empty">No links yet — paste one above to get started!</div>';
+        return;
+      }
+      list.innerHTML = hist.map((h, i) => `
+        <div class="hi">
+          <span class="hi-slug">${h.slug}</span>
+          <span class="hi-orig" title="${h.originalUrl}">${h.originalUrl}</span>
+          <button class="hi-copy" id="hc${i}" onclick="copyHist(${i})">copy</button>
+        </div>`).join('');
+    }
+
+    function copyHist(i) {
+      const btn = document.getElementById(`hc${i}`);
+      navigator.clipboard.writeText(hist[i].shortUrl).then(() => {
+        btn.textContent = '✓';
+        setTimeout(() => { btn.textContent = 'copy'; }, 1800);
+      });
+    }
+
+    function clearHistory() {
+      if (!hist.length) return;
+      hist = []; localStorage.removeItem('sh'); renderHist();
+    }
+
+    function showErr(m) {
+      const el = document.getElementById('errMsg');
+      el.textContent = m; el.style.display = 'block';
+    }
+
+    function hideErr() { document.getElementById('errMsg').style.display = 'none'; }
+
+    document.getElementById('urlInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') shortenUrl();
+    });
+  </script>
+</body>
+</html>

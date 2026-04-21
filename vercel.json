@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "http://urlshortener-alb-1372942651.ap-south-1.elb.amazonaws.com/api/:path*"
+    }
+  ]
+}
